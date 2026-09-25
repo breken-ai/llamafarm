@@ -689,8 +689,9 @@ def save_config(
             else:
                 config_file = config_path / "llamafarm.yaml"
 
-    # Validate configuration before saving
-    config_dict = config.model_dump(mode="json", exclude_none=True)
+    # Validate configuration before saving. Dump by alias so fields such as
+    # `schema_` are written under their YAML name (`schema`).
+    config_dict = config.model_dump(mode="json", exclude_none=True, by_alias=True)
 
     # Run custom validators for constraints beyond JSON Schema
     from config.validators import validate_llamafarm_config
@@ -801,7 +802,7 @@ def update_config(
     config = load_config(config_file, validate=False)
 
     # Apply updates using deep merge
-    config_dict = config.model_dump(mode="json", exclude_none=True)
+    config_dict = config.model_dump(mode="json", exclude_none=True, by_alias=True)
     _deep_merge(config_dict, updates)
 
     # Save updated configuration (preserves original format)

@@ -9,7 +9,13 @@ from typing import Any
 import pytest
 
 # Import the functions we want to test
-from config import ConfigError, load_config_dict, save_config, update_config
+from config import (
+    ConfigError,
+    load_config,
+    load_config_dict,
+    save_config,
+    update_config,
+)
 from config.datamodel import LlamaFarmConfig, Version
 
 
@@ -229,6 +235,21 @@ class TestConfigWriter:
 
             assert saved.rag.default_database is None
             assert "default_database" not in load_config_dict(config_path)["rag"]
+
+    def test_save_config_yaml_keeps_aliased_schema_field(self, sample_config):
+        """`schema_` is written under its YAML name `schema` and survives a resave."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "llamafarm.yaml"
+            sample_config.schema_ = "schemas/person.py::Person"
+
+            save_config(sample_config, config_path)
+            _, saved = save_config(sample_config, config_path)
+
+            raw = load_config_dict(config_path)
+            assert raw["schema"] == "schemas/person.py::Person"
+            assert "schema_" not in raw
+            assert saved.schema_ == "schemas/person.py::Person"
+            assert load_config(config_path).schema_ == "schemas/person.py::Person"
 
     def test_update_config(self, sample_config):
         """Test updating an existing configuration."""

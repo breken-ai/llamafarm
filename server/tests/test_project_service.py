@@ -362,3 +362,17 @@ class TestProjectUpdateRemovesFields:
                 "default_database"
                 not in Path(project_dir, "llamafarm.yaml").read_text()
             )
+
+    def test_update_project_keeps_schema(self, temp_data_dir):
+        with patch("core.settings.settings.lf_data_dir", temp_data_dir):
+            project_dir = ProjectService.get_project_dir("test_ns", "test_proj")
+            os.makedirs(project_dir, exist_ok=True)
+            config = self._config()
+            config.schema_ = "schemas/person.py::Person"
+            ProjectService.save_config("test_ns", "test_proj", config)
+
+            updated = ProjectService.update_project("test_ns", "test_proj", config)
+
+            assert updated.schema_ == "schemas/person.py::Person"
+            reloaded = ProjectService.load_config("test_ns", "test_proj")
+            assert reloaded.schema_ == "schemas/person.py::Person"
