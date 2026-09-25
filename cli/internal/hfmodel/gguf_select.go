@@ -106,17 +106,31 @@ func IsSplitGGUFFile(filename string) bool {
 // SelectGGUFFile picks the best GGUF file from a list based on a quantization
 // preference. Selection rules, in order:
 //
-//  1. If only one file, return it.
-//  2. Filter out split-shard files when a non-split version exists.
-//  3. If preferred is non-empty, return the file matching it (case-insensitive).
+//  1. Skip multimodal projector (mmproj) files unless they are the only files.
+//  2. If only one file, return it.
+//  3. Filter out split-shard files when a non-split version exists.
+//  4. If preferred is non-empty, return the file matching it (case-insensitive).
 //     Falls back to a split-file with the same quant if no non-split matches.
-//  4. Walk QuantPreferenceOrder and return the first matching file.
-//  5. Fall back to the first file in the working set.
+//  5. Walk QuantPreferenceOrder and return the first matching file.
+//  6. Fall back to the first file in the working set.
 //
 // Returns "" only when the input list is empty. Mirrors select_gguf_file.
 func SelectGGUFFile(files []string, preferred string) string {
 	if len(files) == 0 {
 		return ""
+	}
+	// Multimodal projector (mmproj) files are companions to the model
+	// weights, never the weights themselves. They often share a quant label
+	// with the model (e.g. mmproj-pixtral-12b-Q8_0.gguf), so exclude them
+	// unless the list holds nothing else. Mirrors the Python branch.
+	var modelFiles []string
+	for _, f := range files {
+		if !strings.Contains(strings.ToLower(f), "mmproj") {
+			modelFiles = append(modelFiles, f)
+		}
+	}
+	if len(modelFiles) > 0 {
+		files = modelFiles
 	}
 	if len(files) == 1 {
 		return files[0]
