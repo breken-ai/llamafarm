@@ -477,6 +477,10 @@ def _deep_merge_preserved(
         The modified target with merged values
     """
     if isinstance(target, CommentedMap) and isinstance(source, dict):
+        # Keys absent from source were removed or cleared to None (the config
+        # is dumped with exclude_none), so drop them from the target too.
+        for key in [k for k in target if k not in source]:
+            del target[key]
         for key, value in source.items():
             if key in target:
                 existing = target[key]

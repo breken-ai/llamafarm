@@ -212,6 +212,24 @@ class TestConfigWriter:
             backup_files = list(Path(temp_dir).glob("llamafarm.*.yaml"))
             assert len(backup_files) == 0
 
+    def test_save_config_yaml_drops_cleared_field(self, sample_config):
+        """A field cleared to None is removed from an existing YAML file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "llamafarm.yaml"
+
+            sample_config.rag.default_database = "test_db"
+            save_config(sample_config, config_path)
+            assert load_config_dict(config_path)["rag"]["default_database"] == (
+                "test_db"
+            )
+
+            # e.g. DatabaseService.delete_database clears the default like this
+            sample_config.rag.default_database = None
+            _, saved = save_config(sample_config, config_path)
+
+            assert saved.rag.default_database is None
+            assert "default_database" not in load_config_dict(config_path)["rag"]
+
     def test_update_config(self, sample_config):
         """Test updating an existing configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:

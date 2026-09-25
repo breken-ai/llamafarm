@@ -295,3 +295,70 @@ class TestProjectDeletion:
                 pytest.raises(PermissionError, match="Permission denied"),
             ):
                 ProjectService.delete_project(namespace, project_id)
+
+
+class TestProjectUpdateRemovesFields:
+    """update_project is a full replacement: removed fields must leave the file."""
+
+    @pytest.fixture
+    def temp_data_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+    def _config(self, **rag_extra) -> LlamaFarmConfig:
+        return LlamaFarmConfig(
+            version=Version.v1,
+            name="test_proj",
+            namespace="test_ns",
+            rag={
+                "databases": [
+                    {
+                        "name": "main_db",
+                        "type": "ChromaStore",
+                        "embedding_strategies": [
+                            {"name": "emb", "type": "OllamaEmbedder", "config": {}}
+                        ],
+                        "retrieval_strategies": [
+                            {
+                                "name": "ret",
+                                "type": "BasicSimilarityStrategy",
+                                "config": {},
+                            }
+                        ],
+                    }
+                ],
+                **rag_extra,
+            },
+            runtime=Runtime(
+                models=[
+                    Model(
+                        name="default",
+                        provider=Provider.openai,
+                        model="llama3.1:8b",
+                    )
+                ]
+            ),
+        )
+
+    def test_update_project_clears_default_database(self, temp_data_dir):
+        with patch("core.settings.settings.lf_data_dir", temp_data_dir):
+            project_dir = ProjectService.get_project_dir("test_ns", "test_proj")
+            os.makedirs(project_dir, exist_ok=True)
+            ProjectService.save_config(
+                "test_ns", "test_proj", self._config(default_database="main_db")
+            )
+            assert (
+                ProjectService.load_config("test_ns", "test_proj").rag.default_database
+                == "main_db"
+            )
+
+            ProjectService.update_project("test_ns", "test_proj", self._config())
+
+            reloaded = ProjectService.load_config("test_ns", "test_proj")
+            assert reloaded.rag.default_database is None
+            assert (
+                "default_database"
+                not in Path(project_dir, "llamafarm.yaml").read_text()
+            )
