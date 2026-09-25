@@ -231,10 +231,23 @@ class TestConfigWriter:
 
             # e.g. DatabaseService.delete_database clears the default like this
             sample_config.rag.default_database = None
-            _, saved = save_config(sample_config, config_path)
+            save_config(sample_config, config_path)
 
-            assert saved.rag.default_database is None
             assert "default_database" not in load_config_dict(config_path)["rag"]
+            assert load_config(config_path).rag.default_database is None
+
+    def test_save_config_yaml_keeps_unmodeled_keys(self, sample_config):
+        """YAML keys the model does not define are left in an existing file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "llamafarm.yaml"
+            save_config(sample_config, config_path)
+            config_path.write_text(
+                config_path.read_text() + "x-notes: keep me\n", encoding="utf-8"
+            )
+
+            save_config(sample_config, config_path)
+
+            assert load_config_dict(config_path)["x-notes"] == "keep me"
 
     def test_save_config_yaml_keeps_aliased_schema_field(self, sample_config):
         """`schema_` is written under its YAML name `schema` and survives a resave."""
