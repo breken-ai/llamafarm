@@ -300,13 +300,6 @@ class TestProjectDeletion:
 class TestProjectUpdateRemovesFields:
     """update_project is a full replacement: removed fields must leave the file."""
 
-    @pytest.fixture
-    def temp_data_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-
     def _config(self, **rag_extra) -> LlamaFarmConfig:
         return LlamaFarmConfig(
             version=Version.v1,
@@ -342,8 +335,8 @@ class TestProjectUpdateRemovesFields:
             ),
         )
 
-    def test_update_project_clears_default_database(self, temp_data_dir):
-        with patch("core.settings.settings.lf_data_dir", temp_data_dir):
+    def test_update_project_clears_default_database(self, tmp_path):
+        with patch("core.settings.settings.lf_data_dir", str(tmp_path)):
             project_dir = ProjectService.get_project_dir("test_ns", "test_proj")
             os.makedirs(project_dir, exist_ok=True)
             ProjectService.save_config(
@@ -363,8 +356,8 @@ class TestProjectUpdateRemovesFields:
                 not in Path(project_dir, "llamafarm.yaml").read_text()
             )
 
-    def test_update_project_keeps_schema(self, temp_data_dir):
-        with patch("core.settings.settings.lf_data_dir", temp_data_dir):
+    def test_update_project_keeps_schema(self, tmp_path):
+        with patch("core.settings.settings.lf_data_dir", str(tmp_path)):
             project_dir = ProjectService.get_project_dir("test_ns", "test_proj")
             os.makedirs(project_dir, exist_ok=True)
             config = self._config()
