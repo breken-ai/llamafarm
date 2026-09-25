@@ -495,6 +495,20 @@ class TestGetGGUFFilePath:
         with pytest.raises(FileNotFoundError, match="No GGUF files found"):
             get_gguf_file_path("test/model")
 
+    @patch("llamafarm_common.model_utils._get_cached_gguf_files")
+    @patch("llamafarm_common.model_utils.HfApi")
+    def test_get_gguf_file_path_only_projectors_raises(
+        self, mock_hf_api_class, mock_get_cached
+    ):
+        """A repo holding only mmproj projectors has no weights to return."""
+        mock_get_cached.return_value = []
+        mock_api = Mock()
+        mock_api.list_repo_files.return_value = ["mmproj-F16.gguf", "README.md"]
+        mock_hf_api_class.return_value = mock_api
+
+        with pytest.raises(FileNotFoundError, match="No GGUF model weights"):
+            get_gguf_file_path("test/model")
+
     @patch("llamafarm_common.model_utils._get_cached_gguf_path")
     @patch("llamafarm_common.model_utils._get_cached_gguf_files")
     def test_get_gguf_file_path_uses_cache(

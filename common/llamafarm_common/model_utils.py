@@ -645,6 +645,11 @@ def get_gguf_file_path(
         raise FileNotFoundError(
             f"No GGUF files found in model repository: {base_model_id}"
         )
+    if select_gguf_file(available_gguf_files, preferred_quantization) is None:
+        raise FileNotFoundError(
+            f"No GGUF model weights found in model repository (only mmproj "
+            f"projector files): {base_model_id}"
+        )
 
     # Step 3: Select the best GGUF file based on preference
     selected_filename = select_gguf_file_with_logging(
