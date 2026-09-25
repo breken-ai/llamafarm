@@ -198,6 +198,17 @@ class TestSelectGGUFFile:
         result = select_gguf_file(files, "Q8_0")
         assert result == "Voxtral-Mini-3B-2507-Q4_K_M.gguf"
 
+    def test_select_returns_none_for_projectors_only(self):
+        """A list holding only mmproj projectors has no model to select."""
+        files = ["mmproj-BF16.gguf", "mmproj-F16.gguf", "mmproj-F32.gguf"]
+        assert select_gguf_file(files) is None
+        assert select_gguf_file(["mmproj-F16.gguf"], "F16") is None
+
+    def test_select_checks_only_the_filename_for_mmproj(self):
+        """A directory named like a projector does not hide real weights."""
+        files = ["model-Q4_K_M.gguf", "vision-mmproj/model-Q8_0.gguf"]
+        assert select_gguf_file(files, "Q8_0") == "vision-mmproj/model-Q8_0.gguf"
+
     def test_select_first_when_no_quantization_found(self):
         """Test that first file is selected when no quantization recognized."""
         files = ["model_a.gguf", "model_b.gguf"]

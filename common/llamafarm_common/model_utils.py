@@ -327,10 +327,11 @@ def select_gguf_file(
     Select the best GGUF file from a list based on quantization preference.
 
     Selection logic:
-    1. Skip multimodal projector (mmproj) files unless they are the only files
+    1. Skip multimodal projector (mmproj) files; they are never model weights
     2. Filter out split files when a non-split version with same quantization exists
     3. If preferred_quantization is specified and found, use it
-    4. Otherwise, use default preference order: Q4_K_M > Q4_K > Q5_K_M > Q5_K > Q8_0 > others
+    4. Otherwise, use default preference order:
+       Q4_K_M > Q4_K > Q5_K_M > Q5_K > Q8_0 > others
     5. Fall back to first file if no quantized versions found
 
     Args:
@@ -338,7 +339,8 @@ def select_gguf_file(
         preferred_quantization: Optional preferred quantization type (e.g., "Q4_K_M", "Q8_0")
 
     Returns:
-        Selected GGUF filename, or None if no files provided
+        Selected GGUF filename, or None if no files provided or every file is
+        an mmproj projector
 
     Examples:
         >>> files = ["model.Q4_K_M.gguf", "model.Q8_0.gguf", "model.F16.gguf"]
@@ -352,11 +354,13 @@ def select_gguf_file(
 
     # Multimodal projector (mmproj) files are companions to the model weights,
     # never the weights themselves. They often share a quantization label with
-    # the model (e.g. mmproj-pixtral-12b-Q8_0.gguf), so exclude them unless the
-    # list holds nothing else.
-    model_files = [f for f in gguf_files if "mmproj" not in f.lower()]
-    if model_files:
-        gguf_files = model_files
+    # the model (e.g. mmproj-pixtral-12b-Q8_0.gguf), so exclude them. Only the
+    # filename is checked; a directory name must not hide a real weights file.
+    gguf_files = [
+        f for f in gguf_files if "mmproj" not in f.rsplit("/", 1)[-1].lower()
+    ]
+    if not gguf_files:
+        return None
 
     # If only one file, return it
     if len(gguf_files) == 1:

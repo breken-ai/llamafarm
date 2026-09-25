@@ -10,6 +10,7 @@ package hfmodel
 // effects. They take filename strings and return filename strings.
 
 import (
+	"path"
 	"regexp"
 	"strings"
 )
@@ -106,7 +107,7 @@ func IsSplitGGUFFile(filename string) bool {
 // SelectGGUFFile picks the best GGUF file from a list based on a quantization
 // preference. Selection rules, in order:
 //
-//  1. Skip multimodal projector (mmproj) files unless they are the only files.
+//  1. Skip multimodal projector (mmproj) files; they are never model weights.
 //  2. If only one file, return it.
 //  3. Filter out split-shard files when a non-split version exists.
 //  4. If preferred is non-empty, return the file matching it (case-insensitive).
@@ -114,24 +115,27 @@ func IsSplitGGUFFile(filename string) bool {
 //  5. Walk QuantPreferenceOrder and return the first matching file.
 //  6. Fall back to the first file in the working set.
 //
-// Returns "" only when the input list is empty. Mirrors select_gguf_file.
+// Returns "" when the input list is empty or holds only mmproj projectors.
+// Mirrors select_gguf_file.
 func SelectGGUFFile(files []string, preferred string) string {
 	if len(files) == 0 {
 		return ""
 	}
 	// Multimodal projector (mmproj) files are companions to the model
 	// weights, never the weights themselves. They often share a quant label
-	// with the model (e.g. mmproj-pixtral-12b-Q8_0.gguf), so exclude them
-	// unless the list holds nothing else. Mirrors the Python branch.
+	// with the model (e.g. mmproj-pixtral-12b-Q8_0.gguf), so exclude them.
+	// Only the filename is checked; a directory name must not hide a real
+	// weights file. Mirrors the Python branch.
 	var modelFiles []string
 	for _, f := range files {
-		if !strings.Contains(strings.ToLower(f), "mmproj") {
+		if !strings.Contains(strings.ToLower(path.Base(f)), "mmproj") {
 			modelFiles = append(modelFiles, f)
 		}
 	}
-	if len(modelFiles) > 0 {
-		files = modelFiles
+	if len(modelFiles) == 0 {
+		return ""
 	}
+	files = modelFiles
 	if len(files) == 1 {
 		return files[0]
 	}

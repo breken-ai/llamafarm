@@ -180,6 +180,23 @@ func TestSelectGGUFFile(t *testing.T) {
 			want:      "Voxtral-Mini-3B-2507-Q4_K_M.gguf",
 		},
 		{
+			name:  "projectors_only_returns_empty",
+			files: []string{"mmproj-BF16.gguf", "mmproj-F16.gguf", "mmproj-F32.gguf"},
+			want:  "",
+		},
+		{
+			name:      "single_projector_returns_empty",
+			files:     []string{"mmproj-F16.gguf"},
+			preferred: "F16",
+			want:      "",
+		},
+		{
+			name:      "mmproj_checked_on_filename_only",
+			files:     []string{"model-Q4_K_M.gguf", "vision-mmproj/model-Q8_0.gguf"},
+			preferred: "Q8_0",
+			want:      "vision-mmproj/model-Q8_0.gguf",
+		},
+		{
 			name:  "first_when_no_quantization",
 			files: []string{"model_a.gguf", "model_b.gguf"},
 			want:  "model_a.gguf",
